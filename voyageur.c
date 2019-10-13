@@ -5,21 +5,28 @@
 //PRIVE
 
 Voyageur* recupereInfoVoyageurParID(ListeVoyageur* voyageurs, int ID){
+
     ListeVoyageur* tmp = voyageurs;
     if(tmp==NULL)
-        fprintf(stderr,"VOYAGEURS ACTUELLEMENT NULL");
-    while(tmp->suivant!=NULL){
-        if(tmp->v.ID == ID)
-            return &tmp->v;
+        return NULL;
+
+    if(tmp->v.ID == ID)
+        return &(tmp->v);
+    
+    while(tmp!=NULL){
+        if(tmp->v.ID == ID){
+            return &(tmp->v);
+        }
+        tmp=tmp->suivant;
     }
     return NULL;
 }
 
-ListeVoyageur* creerVoyageur(ListeVoyageur* suivant, Voyageur v){
+ListeVoyageur* creerVoyageur(ListeVoyageur* suivant, Voyageur* v){
     ListeVoyageur* retour = (ListeVoyageur*)malloc(sizeof(ListeVoyageur));
-    retour->v.ID = v.ID;
-    retour->v.IDS1 = v.IDS1;
-    retour->v.IDS2 = v.IDS2;
+    retour->v.ID = v->ID;
+    retour->v.IDS1 = v->IDS1;
+    retour->v.IDS2 = v->IDS2;
     retour->suivant = suivant;
     return retour;
 }
@@ -28,52 +35,74 @@ ListeVoyageur* creerVoyageur(ListeVoyageur* suivant, Voyageur v){
 
 int contientVoyageur(ListeVoyageur* l, int idVoyageur){
     ListeVoyageur* tmp = l;
-    while(tmp->suivant!=NULL){
+    while(tmp!=NULL){
         if(tmp->v.ID == idVoyageur)
             return 1;
+        tmp=tmp->suivant;
     }
     return 0;
 }
+
+void afficherListeVoyageur(ListeVoyageur* listes){
+
+    ListeVoyageur* tmp = listes;
+    fprintf(stderr,"afficherlistevoyageur\n");
+    while(tmp != NULL){
+        fprintf(stderr,"ID voyageur: %d\n", tmp->v.ID);
+        tmp=tmp->suivant;
+    }
+    
+}
 //Ajout d'un passager au debut de la liste chainee
-void ajouterVoyageurDansListe(Voyageur v, ListeVoyageur* voyageurs){
-    //Si pas de passager
-    if(voyageurs==NULL){
-        fprintf(stderr,"VOYAGEURS NULL");
-        ListeVoyageur* nouveau = creerVoyageur(NULL, v);
+ListeVoyageur* ajouterVoyageurDansListe(Voyageur* v, ListeVoyageur* voyageurs){
 
-        voyageurs = nouveau;
-        fprintf(stderr,"AZE: %d = ",voyageurs->v.ID);
-
-    }
-    //Sinon ajout en debut de liste
-    else{
-        ListeVoyageur* nouveau = creerVoyageur(voyageurs, v);
-        voyageurs = nouveau;
-    }
+    return creerVoyageur(voyageurs, v);
 }
 
-void supprimerVoyageurDansListe(int idVoyageur, ListeVoyageur* voyageurs){
+ListeVoyageur* supprimerVoyageurDansListe(int idVoyageur, ListeVoyageur* voyageurs, int liberer){
     ListeVoyageur* tmp = voyageurs;
-    if(voyageurs == NULL) return;
-
-    if(tmp->v.ID == idVoyageur){
-        voyageurs = voyageurs->suivant;
-        free(tmp);
-    }
+    ListeVoyageur* prev; 
+    // Si le voyageur a supprimé est en tete de liste 
+    if (tmp != NULL && tmp->v.ID == idVoyageur) 
+    { 
+        fprintf(stderr,"if\n");
+        prev = tmp->suivant;   // Changed head 
+        if(liberer==1)
+            free(voyageurs);
+        return prev;               // free old head 
+    } 
     else{
-            int trouve=0;
-        
-        while(tmp->suivant != NULL && trouve==0){
-            if(tmp->suivant->v.ID == idVoyageur){
-                ListeVoyageur* tmp2 = tmp->suivant;
-                tmp->suivant= tmp2->suivant;
-                free(tmp2);
-                trouve=1;
-            }
-        }
+        fprintf(stderr,"else\n");
+        while (tmp != NULL && tmp->v.ID != idVoyageur) { 
+            prev = tmp; 
+            tmp = tmp->suivant; 
+        } 
+        // If key was not present in linked list 
+        if (tmp == NULL) return NULL; 
+        // Unlink the node from linked list 
+        prev->suivant = tmp->suivant; 
+        if(liberer==1)
+            free(tmp);  // Free memory 
+        return voyageurs;
     }
+    
+}
+    //On supprime le voyageur de la liste d'attente et on l'ajoute
+    //dans la liste de voyageur du bus du joueur concerné
+void faireMonterVoyageurDansBus(Jeu* jeu,int idt, int idb){
+        Voyageur* v2 =recupereInfoVoyageurParID(jeu->voyageursEnAttente,idt);
+        jeu->voyageursEnAttente = supprimerVoyageurDansListe(idt,jeu->voyageursEnAttente,0);
+        
+        Bus* buss = recupereBusJoueurParIDBus(jeu->joueurs, idb, jeu->nbJoueur);
+        buss->voyageurs = ajouterVoyageurDansListe(v2,buss->voyageurs);
 }
 
+void faireDescendreVoyageurDuBus(Jeu* jeu, int idt){
+    Bus* buss = obtenirBussContientIDVoyageur(jeu->joueurs,idt,jeu->nbJoueur);
+    fprintf(stderr,"%p\n",buss);
+    if(buss!=NULL)
+        buss->voyageurs=supprimerVoyageurDansListe(idt,buss->voyageurs,1);
+}
 void recupereDonneeVoyageur(Jeu* jeu){
 
     int nbNvVoyageur, nbVoyageurMonter, nbVoyageurDescendre; 
@@ -91,29 +120,22 @@ void recupereDonneeVoyageur(Jeu* jeu){
     for(int i = 0 ; i < nbNvVoyageur ; i++){
         scanf("%d %d %d", &v.ID, &v.IDS1, &v.IDS2);
         fprintf(stderr," %d , id: %d, ids1: %d, ids2: %d\n", nbNvVoyageur, v.ID, v.IDS1, v.IDS2);
-        ajouterVoyageurDansListe(v,jeu->voyageursEnAttente);
+        jeu->voyageursEnAttente = ajouterVoyageurDansListe(&v,jeu->voyageursEnAttente);
+
     }
     fprintf(stderr,"Fin liste nouveaux voyageurs\n");
 
     //IDT IDB : ID voyageur, IDB Bus dans lequel le voyageur est monté au dernier tour
-    //On supprime le voyageur de la liste d'attente et on l'ajoute
-    //dans la liste de voyageur du bus du joueur concerné
+
     fprintf(stderr,"Debut liste monter voyageurs\n");
 
     int idt, idb;
     for(int i = 0 ; i < nbVoyageurMonter ; i++){
         scanf("%d %d", &idt, &idb);
-        fprintf(stderr,"%d, id voyageur: %d , idbus: %d\n", nbVoyageurMonter, idt, idb);
-
-        // Voyageur* v2 =recupereInfoVoyageurParID(jeu->voyageursEnAttente,idt);
-        //         fprintf(stderr,"TEst");
-
-        // supprimerVoyageurDansListe(idt,jeu->voyageursEnAttente);
-        
-        // Bus* buss = recupereBusJoueurParIDBus(jeu->joueurs, idb, jeu->nbJoueur);
-        // ajouterVoyageurDansListe(*v2,buss->voyageurs);
-
+        fprintf(stderr,"id voyageur: %d , idbus: %d\n", idt, idb);  
+        faireMonterVoyageurDansBus(jeu,idt,idb);
     }
+    
     fprintf(stderr,"Fin liste monter voyageurs\n");
 
     fprintf(stderr,"Debut liste descendre voyageurs\n");
@@ -121,12 +143,12 @@ void recupereDonneeVoyageur(Jeu* jeu){
     //IDT Un numéro de voyageur IDT ayant quitté son bus au dernier tour.
     for(int i = 0 ; i < nbVoyageurDescendre ; i++){
         scanf("%d", &idt);
-        fprintf(stderr,"%d , idt %d \n", nbVoyageurDescendre, idt);
-
-        // //TODO
-        // Bus* buss = obtenirBussContientIDVoyageur(jeu->joueurs,idt,jeu->nbJoueur);
-        // supprimerVoyageurDansListe(idt,buss->voyageurs);
+        fprintf(stderr,"idt %d \n", idt);
+        faireDescendreVoyageurDuBus(jeu, idt);
     }
     fprintf(stderr,"fin liste descendre voyageurs\n");
+
+    //afficherListeVoyageur(jeu->voyageursEnAttente);
+    afficherListeVoyageur(jeu->joueurs[0].bus->voyageurs);
 
 }

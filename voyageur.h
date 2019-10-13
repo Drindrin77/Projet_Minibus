@@ -14,9 +14,11 @@ typedef struct ListeVoyageur{
     struct ListeVoyageur* suivant;
 }ListeVoyageur;
 
-void ajouterVoyageurDansListe(Voyageur p, ListeVoyageur* passagers);
-void supprimerVoyageurDansListe(int idVoyageur, ListeVoyageur* voyageurs);
+ListeVoyageur* ajouterVoyageurDansListe(Voyageur* p, ListeVoyageur* passagers);
+ListeVoyageur* supprimerVoyageurDansListe(int idVoyageur, ListeVoyageur* voyageurs,int liberer);
 int contientVoyageur(ListeVoyageur* l, int idVoyageur);
+Voyageur* recupereInfoVoyageurParID(ListeVoyageur* voyageurs, int ID);
 void recupereDonneeVoyageur(Jeu* jeu);
+void afficherListeVoyageur(ListeVoyageur* listes);
 
 #endif

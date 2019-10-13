@@ -20,9 +20,10 @@ typedef struct Bus{
 
 
 
-void ajouterNouveauBus(Bus** buss, Bus b, int nbBus);
+void ajouterNouveauBus(Bus* buss, Bus b, int nbBus);
 int contientBus(Bus* buss, int idBus, int nbBus);
 void recupereDonneeBus(Jeu* jeu);
 Bus* obtenirBussContientIDVoyageur(Joueur* joueurs, int idVoyageur, int nbJoueur);
+void afficherListeBus(Bus* buss, int nbBus);
 
 #endif

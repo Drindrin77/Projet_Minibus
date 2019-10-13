@@ -29,16 +29,21 @@ Jeu* initialiserJeu(){
     jeu->stations = (Station*)malloc(sizeof(Station)*NOMBRE_STATION_DEBUT);
     recupereDonneePremierTour(jeu);
     jeu->joueurs = (Joueur*)malloc(sizeof(Joueur)*jeu->nbJoueur);
+    for(int i = 0 ; i < jeu->nbJoueur ; i++){
+        jeu->joueurs[i].bus = (Bus*)malloc(sizeof(Bus)*4);   
+    }
     return jeu;
 }
 
 int main(){
     Jeu* jeu =initialiserJeu();
     fprintf(stderr,"Commencement de la boucle \n");
-    while(1){
+    jeu->tour=0;
+    while(jeu->tour<500){
         recupererDonneeChaqueTour(jeu);
         fflush(stderr);
         printf("PASS\n");
         fflush(stdout);
+        jeu->tour++;
     }
 }
