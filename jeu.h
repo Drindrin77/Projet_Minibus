@@ -5,7 +5,10 @@
 #include "joueur.h"
 #include "station.h"
 #include "voyageur.h"
+
 #define NOMBRE_STATION_DEBUT 3
+
+#define MAX_NOMBRE_BUS 4
 
 int monID;
 

@@ -7,9 +7,9 @@ typedef struct Jeu Jeu;
 
 typedef struct Joueur{
     int ID;
-    int SB;
-    int SP;
-    int CT;
+    int SB; //nombre de fois qu'on a ameliore SB
+    int SP; //------------------------------- SP
+    int CT; //------------------------------- CT
     int argent;
     int nbBus;
     int victoire;

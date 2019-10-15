@@ -46,7 +46,6 @@ int contientVoyageur(ListeVoyageur* l, int idVoyageur){
 void afficherListeVoyageur(ListeVoyageur* listes){
 
     ListeVoyageur* tmp = listes;
-    fprintf(stderr,"afficherlistevoyageur\n");
     while(tmp != NULL){
         fprintf(stderr,"ID voyageur: %d\n", tmp->v.ID);
         tmp=tmp->suivant;
@@ -55,7 +54,6 @@ void afficherListeVoyageur(ListeVoyageur* listes){
 }
 //Ajout d'un passager au debut de la liste chainee
 ListeVoyageur* ajouterVoyageurDansListe(Voyageur* v, ListeVoyageur* voyageurs){
-
     return creerVoyageur(voyageurs, v);
 }
 
@@ -65,14 +63,12 @@ ListeVoyageur* supprimerVoyageurDansListe(int idVoyageur, ListeVoyageur* voyageu
     // Si le voyageur a supprimé est en tete de liste 
     if (tmp != NULL && tmp->v.ID == idVoyageur) 
     { 
-        fprintf(stderr,"if\n");
         prev = tmp->suivant;   // Changed head 
         if(liberer==1)
             free(voyageurs);
         return prev;               // free old head 
     } 
     else{
-        fprintf(stderr,"else\n");
         while (tmp != NULL && tmp->v.ID != idVoyageur) { 
             prev = tmp; 
             tmp = tmp->suivant; 
@@ -87,8 +83,8 @@ ListeVoyageur* supprimerVoyageurDansListe(int idVoyageur, ListeVoyageur* voyageu
     }
     
 }
-    //On supprime le voyageur de la liste d'attente et on l'ajoute
-    //dans la liste de voyageur du bus du joueur concerné
+//On supprime le voyageur de la liste d'attente et on l'ajoute
+//dans la liste de voyageur du bus du joueur concerné
 void faireMonterVoyageurDansBus(Jeu* jeu,int idt, int idb){
         Voyageur* v2 =recupereInfoVoyageurParID(jeu->voyageursEnAttente,idt);
         jeu->voyageursEnAttente = supprimerVoyageurDansListe(idt,jeu->voyageursEnAttente,0);
@@ -96,10 +92,10 @@ void faireMonterVoyageurDansBus(Jeu* jeu,int idt, int idb){
         Bus* buss = recupereBusJoueurParIDBus(jeu->joueurs, idb, jeu->nbJoueur);
         buss->voyageurs = ajouterVoyageurDansListe(v2,buss->voyageurs);
 }
-
+//On recherche le bus qui contient le voyageur qui descend.
+//On free le voyageur pour le faire disparaitre du jeu
 void faireDescendreVoyageurDuBus(Jeu* jeu, int idt){
     Bus* buss = obtenirBussContientIDVoyageur(jeu->joueurs,idt,jeu->nbJoueur);
-    fprintf(stderr,"%p\n",buss);
     if(buss!=NULL)
         buss->voyageurs=supprimerVoyageurDansListe(idt,buss->voyageurs,1);
 }
@@ -147,8 +143,4 @@ void recupereDonneeVoyageur(Jeu* jeu){
         faireDescendreVoyageurDuBus(jeu, idt);
     }
     fprintf(stderr,"fin liste descendre voyageurs\n");
-
-    //afficherListeVoyageur(jeu->voyageursEnAttente);
-    afficherListeVoyageur(jeu->joueurs[0].bus->voyageurs);
-
 }

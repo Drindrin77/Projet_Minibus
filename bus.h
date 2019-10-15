@@ -13,7 +13,6 @@ typedef struct Bus{
     int X;
     int Y;
     int IDStationDest;
-    int capacite;
     int nbVoiture;
     ListeVoyageur* voyageurs;
 }Bus;

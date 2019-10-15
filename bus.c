@@ -6,7 +6,7 @@
 void ajouterNouveauBus(Bus* buss, Bus b, int nbBus){
 
     buss[nbBus-1].ID = b.ID;
-    buss[nbBus-1].capacite = b.capacite;
+    buss[nbBus-1].nbVoiture = b.nbVoiture;
     buss[nbBus-1].IDStationDest = b.IDStationDest;
     buss[nbBus-1].nbVoiture = b.nbVoiture;
     buss[nbBus-1].X = b.X;
@@ -33,11 +33,8 @@ int contientBus(Bus* buss, int idBus, int nbBus){
 
 Bus* obtenirBussContientIDVoyageur(Joueur* joueurs, int idVoyageur, int nbJoueur){
     for(int i = 0 ; i < nbJoueur ; i++){
-        if( contientVoyageur(joueurs[i].bus->voyageurs, idVoyageur) == 1){
-            fprintf(stderr,"contient\n");
+        if( contientVoyageur(joueurs[i].bus->voyageurs, idVoyageur) == 1)
             return joueurs[i].bus;
-
-        }
     }
     return NULL;
 }
@@ -53,10 +50,10 @@ void recupereDonneeBus(Jeu* jeu){
     Bus b;
 
     fprintf(stderr,"Debut liste bus: \n");
-    //ID J X Y A S: bus, idJoueur le possedant, position X Y du bus, direction id Station, capacite
+    //ID J X Y A S: bus, idJoueur le possedant, position X Y du bus, direction id Station, nombre de voiture
     for(int i = 0 ; i < nbBus ; i++){
-        scanf("%d %d %d %d %d %d", &b.ID, &idJoueur, &b.X, &b.Y, &b.IDStationDest, &b.capacite);
-        fprintf(stderr,"Info bus n°%d : %d %d %d %d %d %d \n", i, b.ID, idJoueur, b.X, b.Y, b.IDStationDest, b.capacite);
+        scanf("%d %d %d %d %d %d", &b.ID, &idJoueur, &b.X, &b.Y, &b.IDStationDest, &b.nbVoiture);
+        fprintf(stderr,"Info bus n°%d : %d %d %d %d %d %d \n", i, b.ID, idJoueur, b.X, b.Y, b.IDStationDest, b.nbVoiture);
 
         Joueur* j = recupereInfoJoueurParID(jeu->joueurs, idJoueur, jeu->nbJoueur);
         

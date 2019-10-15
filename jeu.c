@@ -31,6 +31,7 @@ Jeu* initialiserJeu(){
     jeu->joueurs = (Joueur*)malloc(sizeof(Joueur)*jeu->nbJoueur);
     for(int i = 0 ; i < jeu->nbJoueur ; i++){
         jeu->joueurs[i].bus = (Bus*)malloc(sizeof(Bus)*4);   
+        jeu->joueurs[i].nbBus = 0;
     }
     return jeu;
 }
