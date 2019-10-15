@@ -9,9 +9,11 @@ Recuperation des valeurs avant le premier tour
 void recupereDonneePremierTour(Jeu* j){
     scanf("%d %d", &j->nbJoueur, &monID);
     fprintf(stderr,"Nombre de joueur : %d, monID: %d \n", j->nbJoueur, monID);
-
-    for(int i = 0 ; i < NOMBRE_STATION_DEBUT ; i++){
-        scanf("%d %d %d %d", &j->stations[i].ID, &j->stations[i].X, &j->stations[i].Y, &j->stations[i].capacite);
+    Station s;
+    for(int i = 0 ; i < NOMBRE_STATIONS_DEBUT ; i++){
+        scanf("%d %d %d %d", &(s.ID), &(s.X), &(s.Y), &(s.capacite));
+        j->nbStation++;
+        ajouterNouvelleStation(j->stations,s,j->nbStation);
         fprintf(stderr,"Station n°%d\n",i);
         fprintf(stderr,"Id:%d X:%d Y:%d capacite:%d\n", j->stations[i].ID, j->stations[i].X,j->stations[i].Y, j->stations[i].capacite);
     }
@@ -26,18 +28,19 @@ void recupererDonneeChaqueTour(Jeu* jeu){
 
 Jeu* initialiserJeu(){
     Jeu* jeu = (Jeu*)malloc(sizeof(Jeu));
-    jeu->stations = (Station*)malloc(sizeof(Station)*NOMBRE_STATION_DEBUT);
+    jeu->stations = (Station*)malloc(sizeof(Station)*NOMBRE_MAX_STATIONS);
+    jeu->nbStation = 0;
     recupereDonneePremierTour(jeu);
     jeu->joueurs = (Joueur*)malloc(sizeof(Joueur)*jeu->nbJoueur);
     for(int i = 0 ; i < jeu->nbJoueur ; i++){
-        jeu->joueurs[i].bus = (Bus*)malloc(sizeof(Bus)*4);   
+        jeu->joueurs[i].bus = (Bus*)malloc(sizeof(Bus)*MAX_NOMBRE_BUS);   
         jeu->joueurs[i].nbBus = 0;
     }
     return jeu;
 }
 
 int main(){
-    Jeu* jeu =initialiserJeu();
+    Jeu* jeu = initialiserJeu();
     fprintf(stderr,"Commencement de la boucle \n");
     jeu->tour=0;
     while(jeu->tour<500){

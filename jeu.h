@@ -4,17 +4,15 @@
 #include "bus.h"
 #include "joueur.h"
 #include "station.h"
-#include "voyageur.h"
 
-#define NOMBRE_STATION_DEBUT 3
-
+#define NOMBRE_MAX_STATIONS 10
+#define NOMBRE_STATIONS_DEBUT 3
 #define MAX_NOMBRE_BUS 4
 
 int monID;
 
 typedef struct Station Station;
 typedef struct Joueur Joueur;
-typedef struct ListeVoyageur ListeVoyageur;
 
 typedef struct Jeu{
     int nbJoueur;
@@ -23,7 +21,6 @@ typedef struct Jeu{
 
     Station* stations;
     Joueur* joueurs;
-    ListeVoyageur* voyageursEnAttente;
 }Jeu;
 
 void recupereDonneePremierTour(Jeu* j);
