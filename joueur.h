@@ -18,6 +18,5 @@ typedef struct Joueur{
 
 Joueur* recupereInfoJoueurParID(Joueur* joueurs, int ID, int nbJoueur);
 void recupereDonneeJoueurs(Jeu* jeu);
-Bus* recupereBusJoueurParIDBus(Joueur* joueurs, int idBus, int nbJoueur);
 
 #endif

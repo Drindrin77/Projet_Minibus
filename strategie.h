@@ -2,7 +2,7 @@
 #define STRATEGIE_HEADER
 
 #include "jeu.h"
-#include "action.c"
+#include "action.h"
 
 typedef struct Joueur Joueur;
 typedef struct Jeu Jeu;
@@ -10,7 +10,7 @@ typedef struct Jeu Jeu;
 //La structure va contenir tous les données du jeu et toutes les commandes.
 typedef struct Strategie{
     Jeu* jeu;
-    int tailleCommandes;
+    int nbCommandes;
     char** commandes;
     Joueur* moi;
 }Strategie;

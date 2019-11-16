@@ -4,10 +4,10 @@
 #include "bus.h"
 #include "joueur.h"
 #include "station.h"
+#include "strategie.h"
 
 #define NOMBRE_MAX_STATIONS 10
 #define NOMBRE_STATIONS_DEBUT 3
-#define MAX_NOMBRE_BUS 4
 
 int monID;
 

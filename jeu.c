@@ -8,14 +8,11 @@ Recuperation des valeurs avant le premier tour
 */
 void recupereDonneePremierTour(Jeu* j){
     scanf("%d %d", &j->nbJoueur, &monID);
-    fprintf(stderr,"Nombre de joueur : %d, monID: %d \n", j->nbJoueur, monID);
     Station s;
     for(int i = 0 ; i < NOMBRE_STATIONS_DEBUT ; i++){
-        scanf("%d %d %d %d", &(s.ID), &(s.X), &(s.Y), &(s.capacite));
+        scanf("%d %d %d %d", &(s.ID), &(s.position.X), &(s.position.Y), &(s.capacite));
         j->nbStation++;
-        ajouterNouvelleStation(j->stations,s,j->nbStation);
-        fprintf(stderr,"Station n°%d\n",i);
-        fprintf(stderr,"Id:%d X:%d Y:%d capacite:%d\n", j->stations[i].ID, j->stations[i].X,j->stations[i].Y, j->stations[i].capacite);
+        addStation(j->stations,s,j->nbStation);
     }
 }
 
@@ -36,17 +33,16 @@ Jeu* initialiserJeu(){
         jeu->joueurs[i].bus = (Bus*)malloc(sizeof(Bus)*MAX_NOMBRE_BUS);   
         jeu->joueurs[i].nbBus = 0;
     }
-    return jeu;
+    return jeu; 
 }
 
 int main(){
     Jeu* jeu = initialiserJeu();
-    fprintf(stderr,"Commencement de la boucle \n");
     jeu->tour=0;
     while(jeu->tour<500){
         recupererDonneeChaqueTour(jeu);
         fflush(stderr);
-        printf("PASS\n");
+        start(jeu);
         fflush(stdout);
         jeu->tour++;
     }
