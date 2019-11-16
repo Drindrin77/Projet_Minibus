@@ -3,22 +3,16 @@
 
 #include "bus.h"
 
-void ajouterNouveauBus(Bus* buss, Bus b, int nbBus){
+void addBus(Bus* buss, Bus b, int nbBus){
     buss[nbBus-1].ID = b.ID;
     buss[nbBus-1].nbVoiture = b.nbVoiture;
     buss[nbBus-1].IDStationDest = b.IDStationDest;
     buss[nbBus-1].position.X = b.position.X;
     buss[nbBus-1].position.Y = b.position.Y;
-    buss[nbBus-1].peutChangerDest = 1;
+    buss[nbBus-1].canMove = 1;
 }
 
-void displayBuses(Bus* buss, int nbBus){
-    for(int i = 0 ; i < nbBus ; i++){
-        fprintf(stderr,"buss id : %d, iddest : %d\n" ,buss[i].ID,buss[i].IDStationDest);
-    }
-}
-
-Bus* recupereBusJoueurParIDBus(Joueur* joueurs, int idBus, int nbJoueur){
+Bus* getBusByIdBus(Joueur* joueurs, int idBus, int nbJoueur){
     Joueur joueur;
     for(int i = 0 ; i < nbJoueur ; i++){
         joueur = joueurs[i];
@@ -37,7 +31,7 @@ void updateDataBus(Bus* bToUp, Bus b){
     bToUp->IDStationDest = b.IDStationDest;
 }
 
-int contientBus(Bus* buss, int idBus, int nbBus){
+int containBus(Bus* buss, int idBus, int nbBus){
     for(int i = 0 ; i < nbBus ; i++){
         if(buss[i].ID == idBus)
             return 1;
@@ -49,8 +43,8 @@ int ceiling(int n){
     return (n + NB_VOYAGEUR_MAX_CHARGEMENT - 1) / NB_VOYAGEUR_MAX_CHARGEMENT;
 }
 
-int busPeutRepartir(Bus b, Station s){
-    if(memePosition(b.position,s.position)==1){
+int busCanMove(Bus b, Station s){
+    if(samePosition(b.position,s.position)==1){
         if( nbVoyageurVeutDescendre(s.ID,b.voyageurs) == 0){
 
             int nbVoyageurDansBus = nbVoyageur(b.voyageurs);
@@ -74,7 +68,7 @@ int busPeutRepartir(Bus b, Station s){
     return 0;
 }
 
-Bus* obtenirBussContientIDVoyageur(Joueur* joueurs, int idVoyageur, int nbJoueur){
+Bus* getBusByIdP(Joueur* joueurs, int idVoyageur, int nbJoueur){
 
     for(int i = 0 ; i < nbJoueur ; i++){
         for(int j = 0 ; j < joueurs[i].nbBus ; j++){
@@ -109,9 +103,9 @@ void recupereDonneeBus(Jeu* jeu){
         Joueur* j = recupereInfoJoueurParID(jeu->joueurs, idJoueur, jeu->nbJoueur);
 
         //Si le joueur ne contient pas le bus, l'ajoute
-        if( contientBus(j->bus, b.ID, j->nbBus) == 0 ){
+        if( containBus(j->bus, b.ID, j->nbBus) == 0 ){
             j->nbBus++;
-            ajouterNouveauBus(j->bus, b, j->nbBus);
+            addBus(j->bus, b, j->nbBus);
         }else{
             Bus* bToUpdate = getBusOfPlayerByIDBus(*j,b.ID);
             updateDataBus(bToUpdate,b);

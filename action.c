@@ -1,7 +1,7 @@
 #include "action.h"
 #include <string.h>
 
-void libereMemoireCommandes(char** commandes, int size){
+void freeCommands(char** commandes, int size){
     for(int i = size-1 ; i >= 0 ; i--){
         free(commandes[i]);
     }
@@ -12,13 +12,13 @@ char** initCommandes(){
     return commandes;
 }
 
-void ajouterCommande(Strategie* strat, char* c){
-    strat->commandes[strat->nbCommandes] = (char*)malloc(sizeof(char));
-    strcpy(strat->commandes[strat->nbCommandes], c);
-    strat->nbCommandes++;
+void addCommand(Strategie* strat, char* c){
+    strat->commands[strat->nbCommand] = (char*)malloc(sizeof(char));
+    strcpy(strat->commands[strat->nbCommand], c);
+    strat->nbCommand++;
 }
 
-void envoieCommande(char** commandes, int nbCommande){
+void sendCommands(char** commandes, int nbCommande){
     char* resultat = (char*)malloc(sizeof(char)*(nbCommande*MAX_SIZE_COMMAND_NAME));
     if(nbCommande > 0){
         strcpy(resultat,commandes[0]);

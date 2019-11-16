@@ -8,7 +8,7 @@ Station* getStationByIDStation(Station* stations, int nbStation, int idStation){
     return NULL;
 }
 
-Station* recupereStationParIdVoyageur(Station* stations, int nbStation, int idVoyageur){
+Station* getStationByIdP(Station* stations, int nbStation, int idVoyageur){
     for(int i = 0 ; i < nbStation ; i++){
         if(contientVoyageur(stations[i].voyageursEnAttente,idVoyageur)==1)
             return &(stations[i]);
@@ -63,7 +63,7 @@ void addStation(Station* stations, Station s, int nbStation){
 }
 //1 entier: info si nouvelle station ( 1 oui, 0 non)
 //4 entiers: ID, X, Y , capacite d'une NOUVELLE station
-void recupereDonneeStations(Jeu* jeu){
+void getServerDataStation(Jeu* jeu){
     int nouvelleStation;
 
     //Indique s'il y a une nouvelle station

@@ -18,7 +18,7 @@ void recupereDonneePremierTour(Jeu* j){
 
 void recupererDonneeChaqueTour(Jeu* jeu){
     recupereDonneeJoueurs(jeu); //Recupere les scanf dans le fichier joueur.c
-    recupereDonneeStations(jeu); //Recupere les scanf dans le fichier station.c
+    getServerDataStation(jeu); //Recupere les scanf dans le fichier station.c
     recupereDonneeBus(jeu); //recupere les scanf dans le fichier bus.c
     recupereDonneeVoyageur(jeu); //recupere les scanf dans le fichier voyageur.c
 }
