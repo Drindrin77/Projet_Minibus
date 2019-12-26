@@ -1,31 +1,33 @@
-#include <stdlib.h>
-#include <stdio.h>
-
 #include "bus.h"
+
+void freeBus(Bus* b){
+    freeLLPassengers(b->passengers);
+    free(b);
+}
 
 void addBus(Bus* buss, Bus b, int nbBus){
     buss[nbBus-1].ID = b.ID;
-    buss[nbBus-1].nbVoiture = b.nbVoiture;
+    buss[nbBus-1].nbCar = b.nbCar;
     buss[nbBus-1].IDStationDest = b.IDStationDest;
     buss[nbBus-1].position.X = b.position.X;
     buss[nbBus-1].position.Y = b.position.Y;
     buss[nbBus-1].canMove = 1;
 }
 
-Bus* getBusByIdBus(Joueur* joueurs, int idBus, int nbJoueur){
-    Joueur joueur;
-    for(int i = 0 ; i < nbJoueur ; i++){
-        joueur = joueurs[i];
-        for(int j = 0 ; j < joueur.nbBus ; j++){
-            if( joueur.bus[j].ID == idBus)
-                return &(joueur.bus[j]);           
+Bus* getBusByIdBus(Player* players, int idBus, int nbPlayers){
+    Player p;
+    for(int i = 0 ; i < nbPlayers ; i++){
+        p = players[i];
+        for(int j = 0 ; j < p.nbBus ; j++){
+            if( p.bus[j].ID == idBus)
+                return &(p.bus[j]);           
         }
     }
     return NULL;
 }
 
 void updateDataBus(Bus* bToUp, Bus b){
-    bToUp->nbVoiture = b.nbVoiture;
+    bToUp->nbCar = b.nbCar;
     bToUp->position.X = b.position.X;
     bToUp->position.Y = b.position.Y;
     bToUp->IDStationDest = b.IDStationDest;
@@ -40,74 +42,74 @@ int containBus(Bus* buss, int idBus, int nbBus){
 }
 
 int ceiling(int n){
-    return (n + NB_VOYAGEUR_MAX_CHARGEMENT - 1) / NB_VOYAGEUR_MAX_CHARGEMENT;
+    return (n + MAX_PASSENGER_GETTING_OFF_BUSS - 1) / MAX_PASSENGER_GETTING_OFF_BUSS;
 }
 
 int busCanMove(Bus b, Station s){
     if(samePosition(b.position,s.position)==1){
-        if( nbVoyageurVeutDescendre(s.ID,b.voyageurs) == 0){
+        if( nbPassengersGettingOffBus(s.ID,b.passengers) == 0){
 
-            int nbVoyageurDansBus = nbVoyageur(b.voyageurs);
+            int nbPassengerInBus = nbPassenger(b.passengers);
             //BUS PLEIN
-            if(nbVoyageurDansBus == b.nbVoiture*5)
+            if(nbPassengerInBus == b.nbCar*5)
                 return 1;
 
-            int nbVoyageurStation = nbVoyageur(s.voyageursEnAttente);
-            int nbTourPourCharger;
-            int nbVoyageursARemplir = (b.nbVoiture*5) - nbVoyageurDansBus;
+            int nbPassengerInStation = nbPassenger(s.waitingPassengers);
+            int nbTurnToFill;
+            int nbPassengerToFill = (b.nbCar*5) - nbPassengerInBus;
 
-            if(nbVoyageurStation<nbVoyageursARemplir)
-                nbTourPourCharger = ceiling(nbVoyageurStation);
+            if(nbPassengerInStation<nbPassengerToFill)
+                nbTurnToFill = ceiling(nbPassengerInStation);
             else
-                nbTourPourCharger = ceiling(nbVoyageursARemplir);
+                nbTurnToFill = ceiling(nbPassengerToFill);
 
-            if(nbTourPourCharger == 0)
+            if(nbTurnToFill == 0)
                 return 1;
         }
     }
     return 0;
 }
 
-Bus* getBusByIdP(Joueur* joueurs, int idVoyageur, int nbJoueur){
+Bus* getBusByIdP(Player* players, int idPassenger, int nbPlayers){
 
-    for(int i = 0 ; i < nbJoueur ; i++){
-        for(int j = 0 ; j < joueurs[i].nbBus ; j++){
-            Bus* bus = &(joueurs[i].bus[j]);
-            if( contientVoyageur(bus->voyageurs, idVoyageur) == 1)
+    for(int i = 0 ; i < nbPlayers ; i++){
+        for(int j = 0 ; j < players[i].nbBus ; j++){
+            Bus* bus = &(players[i].bus[j]);
+            if( containPassenger(bus->passengers, idPassenger) == 1)
                 return bus;
         }
     }
     return NULL;
 }
-Bus* getBusOfPlayerByIDBus(Joueur j, int idBus){
-    for(int i = 0 ; i < j.nbBus ; i++){
-        if(j.bus[i].ID == idBus)
-            return &j.bus[i];
+Bus* getBusOfPlayerByIDBus(Player p, int idBus){
+    for(int i = 0 ; i < p.nbBus ; i++){
+        if(p.bus[i].ID == idBus)
+            return &p.bus[i];
     }
     return NULL;
 }
 
 //1 entier : nombre de bus en circulation
 //6 entiers : info buss
-void recupereDonneeBus(Jeu* jeu){
+void getServerDataBus(Game* game){
 
-    int nbBus,idJoueur;
+    int nbBus,idPlayer;
     scanf("%d", &nbBus);
 
     Bus b;
 
     //ID J X Y A S: bus, idJoueur le possedant, position X Y du bus, direction id Station, nombre de voiture
     for(int i = 0 ; i < nbBus ; i++){
-        scanf("%d %d %d %d %d %d", &b.ID, &idJoueur, &b.position.X, &b.position.Y, &b.IDStationDest, &b.nbVoiture);
+        scanf("%d %d %d %d %d %d", &b.ID, &idPlayer, &b.position.X, &b.position.Y, &b.IDStationDest, &b.nbCar);
 
-        Joueur* j = recupereInfoJoueurParID(jeu->joueurs, idJoueur, jeu->nbJoueur);
+        Player* p = getPlayer(game->players, idPlayer, game->nbPlayers);
 
         //Si le joueur ne contient pas le bus, l'ajoute
-        if( containBus(j->bus, b.ID, j->nbBus) == 0 ){
-            j->nbBus++;
-            addBus(j->bus, b, j->nbBus);
+        if( containBus(p->bus, b.ID, p->nbBus) == 0 ){
+            p->nbBus++;
+            addBus(p->bus, b, p->nbBus);
         }else{
-            Bus* bToUpdate = getBusOfPlayerByIDBus(*j,b.ID);
+            Bus* bToUpdate = getBusOfPlayerByIDBus(*p,b.ID);
             updateDataBus(bToUpdate,b);
         }
     }
