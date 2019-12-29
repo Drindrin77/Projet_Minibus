@@ -1,3 +1,33 @@
+/*
+Au premier tour, on recupere uniquement les infos du premier tour et on initialise tous les structures.
+Puis a chaque tour on effectue le meme programme dans cet ordre:
+-Recuperation de tous les donnees envoyés par le serveur
+-Analyse du jeu
+-Envoi de la commande
+
+Comment fonctionne mon IA :
+    A chaque tour, après avoir récuperer les données, on achete des améliorations:
+
+    -En premier, on achete des bus jusqu'à en avoir le max. On l'achete si on a assez d'argent 
+        et on le place à la station qui possède le plus de voyageur. 
+        Ainsi si toutes les stations sont vides, on ne réalise aucun achat.
+    -Puis une fois les 4 bus obtenus, on achete au max l'amelioration SP (augmente la vitesse des bus)
+    -Puis une fois qu'on a amélioré au max la vitesse des bus, on augmente au max l'amelioration CT (prix du billet)
+
+    Une fois les améliorations achetés ou non, on dirige les bus.
+    Chaque bus possede la variable canChangeDestination. Cette variable va nous permettre de savoir si le bus peut 
+    à nouveau changer de destination.
+    
+    -On check si le bus peut changer de destination.
+        Si oui, on récupere l'id de la station où il va aller et on change cette variable à 0 (false)
+        On précéde ainsi pour calculer la station :
+            -Si le bus possède des voyageurs, il ira à la station souhaitée la plus proche
+            -Sinon il ira à la station non vide la plus proche.
+
+    On stocke toutes les commandes dans une variable.
+    A la fin de ces opérations, on envoit la/les commande(s). 
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5,10 +35,11 @@
 
 //CONSTANTES
 
-#define MAX_PASSENGER_GETTING_OFF_BUSS 5
+#define MAX_PASSENGER_GETTING_OFF_BUS 5
+#define NB_MAX_PASSENGER_IN_BUS 5
 #define MAX_TURN 500
-#define NOMBRE_MAX_STATIONS 10
-#define NOMBRE_STATIONS_DEBUT 3
+#define MAX_STATIONS 10
+#define NB_STATIONS_START 3
 #define MAX_SIZE_COMMAND_NAME 20
 #define MAX_SIZE_COMMANDS 20
 #define PRICE_ADD_BUS 100
@@ -21,7 +52,7 @@
 #define MAX_INCREASE_SB 2
 #define MAX_NB_BUS 4
 
-int monID;
+int myID;
 
 //STRUCTURES
 
@@ -46,7 +77,7 @@ typedef struct Bus{
     Position position;
     int IDStationDest;
     int nbCar; 
-    int canMove;
+    int canChangeDestination;
     LLPassenger* passengers;
 }Bus;
 
@@ -64,11 +95,12 @@ typedef struct Player{
 typedef struct Station{
     int ID;
     Position position;
-    int capacite;
+    int capacity; //not used
     int nbPassager;
     LLPassenger* waitingPassengers;
 }Station;
 
+//Structure qui contient tous les données du jeu.
 typedef struct Game{
     int nbPlayers;
     int turn;
@@ -78,6 +110,7 @@ typedef struct Game{
     Player* players;
 }Game;
 
+//Structure qui permet de simplifier la mise en place de la strategie.
 typedef struct Strategy{
     Game* game;
     int nbCommand;
@@ -92,7 +125,7 @@ void freeBus(Bus* bus);
 void addBus(Bus* buss, Bus b, int nbBus);
 int containBus(Bus* buss, int idBus, int nbBus);
 Bus* getBusByIdP(Player* players, int idVoyageur, int nbPlayers);
-int busCanMove(Bus b, Station s);
+int busCanChangeDestination(Bus b, Station s);
 Bus* getBusByIdBus(Player* players, int idBus, int nbPlayers);
 void getServerDataBus(Game* game);
 
@@ -137,7 +170,7 @@ Game* initGame();
 
 void freeLLPassengers(LLPassenger* head);
 LLPassenger* createPassenger(LLPassenger* suivant, Passenger* v);
-LLPassenger* deletePassenger(int idPassenger, LLPassenger* passengers,int liberer);
+LLPassenger* deletePassenger(int idPassenger, LLPassenger* passengers,int freeP);
 int containPassenger(LLPassenger* l, int idPassenger);
 Passenger* getPassenger(LLPassenger* passengers, int ID);
 int nbPassenger(LLPassenger* l);
@@ -171,6 +204,7 @@ Station* getStationByIDStation(Station* stations, int nbStation, int idStation);
 void addStation(Station* stations, Station s, int nbStation);
 Station* getClosestStation(Position pBus, Station* stations, int nbStation);
 Station* getStationsNotEmpty(Station* stations, int* nbStation);
+int getIDStationWithMostPassenger(Station* stations, int nbStations);
 void getServerDataStation(Game* game);
 
 /*
@@ -178,132 +212,17 @@ void getServerDataStation(Game* game);
 */
 void freeStrategy(Strategy* s);
 Strategy* initStructStrategy(Game* game);
-void startStrategy(Game* game);
-void firstTurn(Strategy* s);
-void everyTurn(Strategy* s);
-void updateBusCanMove(Strategy* strat);
-void moveBuses(Strategy* strat);
+void play(Game* game);
+void everyTurnStrategy(Strategy* s);
+void updateCanChangeDestination(Strategy* strat);
+void changeDestinationBuses(Strategy* strat);
 void buyImprovements(Strategy* s);
 
 /*
-*   FUNCTIONS BUS
-*/
-void freeBus(Bus* b){
-    freeLLPassengers(b->passengers);
-    free(b);
-}
-
-void addBus(Bus* buss, Bus b, int nbBus){
-    buss[nbBus-1].ID = b.ID;
-    buss[nbBus-1].nbCar = b.nbCar;
-    buss[nbBus-1].IDStationDest = b.IDStationDest;
-    buss[nbBus-1].position.X = b.position.X;
-    buss[nbBus-1].position.Y = b.position.Y;
-    buss[nbBus-1].canMove = 1;
-}
-
-Bus* getBusByIdBus(Player* players, int idBus, int nbPlayers){
-    Player p;
-    for(int i = 0 ; i < nbPlayers ; i++){
-        p = players[i];
-        for(int j = 0 ; j < p.nbBus ; j++){
-            if( p.bus[j].ID == idBus)
-                return &(p.bus[j]);           
-        }
-    }
-    return NULL;
-}
-
-void updateDataBus(Bus* bToUp, Bus b){
-    bToUp->nbCar = b.nbCar;
-    bToUp->position.X = b.position.X;
-    bToUp->position.Y = b.position.Y;
-    bToUp->IDStationDest = b.IDStationDest;
-}
-
-int containBus(Bus* buss, int idBus, int nbBus){
-    for(int i = 0 ; i < nbBus ; i++){
-        if(buss[i].ID == idBus)
-            return 1;
-    }
-    return 0;
-}
-
-int ceiling(int n){
-    return (n + MAX_PASSENGER_GETTING_OFF_BUSS - 1) / MAX_PASSENGER_GETTING_OFF_BUSS;
-}
-
-int busCanMove(Bus b, Station s){
-    if(samePosition(b.position,s.position)==1){
-        if( nbPassengersGettingOffBus(s.ID,b.passengers) == 0){
-
-            int nbPassengerInBus = nbPassenger(b.passengers);
-            //BUS PLEIN
-            if(nbPassengerInBus == b.nbCar*5)
-                return 1;
-
-            int nbPassengerInStation = nbPassenger(s.waitingPassengers);
-            int nbTurnToFill;
-            int nbPassengerToFill = (b.nbCar*5) - nbPassengerInBus;
-
-            if(nbPassengerInStation<nbPassengerToFill)
-                nbTurnToFill = ceiling(nbPassengerInStation);
-            else
-                nbTurnToFill = ceiling(nbPassengerToFill);
-
-            if(nbTurnToFill == 0)
-                return 1;
-        }
-    }
-    return 0;
-}
-
-Bus* getBusByIdP(Player* players, int idPassenger, int nbPlayers){
-
-    for(int i = 0 ; i < nbPlayers ; i++){
-        for(int j = 0 ; j < players[i].nbBus ; j++){
-            Bus* bus = &(players[i].bus[j]);
-            if( containPassenger(bus->passengers, idPassenger) == 1)
-                return bus;
-        }
-    }
-    return NULL;
-}
-Bus* getBusOfPlayerByIDBus(Player p, int idBus){
-    for(int i = 0 ; i < p.nbBus ; i++){
-        if(p.bus[i].ID == idBus)
-            return &p.bus[i];
-    }
-    return NULL;
-}
-
-void getServerDataBus(Game* game){
-    Bus b;
-    int nbBus,idPlayer;
-    scanf("%d", &nbBus);
-
-    //ID J X Y A S: bus, idPlayer, position X Y, id Station, nbCar
-    for(int i = 0 ; i < nbBus ; i++){
-        scanf("%d %d %d %d %d %d", &b.ID, &idPlayer, &b.position.X, &b.position.Y, &b.IDStationDest, &b.nbCar);
-        Player* p = getPlayer(game->players, idPlayer, game->nbPlayers);
-
-        //Si le joueur ne contient pas le bus, l'ajoute
-        if( containBus(p->bus, b.ID, p->nbBus) == 0 ){
-            p->nbBus++;
-            addBus(p->bus, b, p->nbBus);
-        }else{
-            Bus* bToUpdate = getBusOfPlayerByIDBus(*p,b.ID);
-            updateDataBus(bToUpdate,b);
-        }
-    }
-}
-
-
-/*
-*   FUNCTIONS COMMAND
+*   FUNCTIONS COMMANDS
 */
 void freeCommands(char** commands, int size){
-    for(int i = size-1 ; i >= 0 ; i--){
+    for(int i = size-1 ; i > 0 ; i--){
         free(commands[i]);
     }
     free(commands);
@@ -319,19 +238,23 @@ void addCommand(Strategy* strat, char* c){
     strat->nbCommand++;
 }
 
+//On envoie dans la sortie standard la liste des commandes stockée dans commands
+//commands contient forcement au moins la commande PASS
 void sendCommands(char** commands, int nbcommand){
     char* resultat = (char*)malloc(sizeof(char)*(nbcommand*MAX_SIZE_COMMAND_NAME));
-    if(nbcommand > 0){
-        strcpy(resultat,commands[0]);
-        for(int i = 1 ; i < nbcommand ; i++){
-            strcat(resultat,";");
-            strcat(resultat,commands[i]);
-        }
-        printf("%s\n",resultat);
-        free(resultat);
+    strcpy(resultat,commands[0]);
+    for(int i = 1 ; i < nbcommand ; i++){
+        strcat(resultat,";");
+        strcat(resultat,commands[i]);
     }
+    printf("%s\n",resultat);
+    free(resultat);
 }
 
+/*
+    Liste des fonctions qui renvoient la chaine de caractere qui correspond
+    à la commande qui permet d'effectuer l'action
+*/
 char* command_addBus(int idStation){
     char* command = (char*)malloc(sizeof(char)*MAX_SIZE_COMMAND_NAME);
     snprintf(command,MAX_SIZE_COMMAND_NAME,"BUS %d",idStation);
@@ -370,6 +293,11 @@ char* command_pass(){
     return command;
 }
 
+/*
+    LISTE DES CONDITIONS DES AMELIORATIONS
+    Renvoie 1 si on peut effectuer l'amelioration
+    0 sinon
+*/
 int canAddBus(Player p){
     if(p.argent < PRICE_ADD_BUS || p.nbBus == MAX_NB_BUS)
         return 0;
@@ -382,7 +310,7 @@ int canIncreaseSizeBus(Player p, Bus bus){
 }
 
 int canUpgradeSB(Player p){
-    if(p.argent < PRICE_UPGRADE_SB || p.SB == MAX_INCREASE_SB) //SB can etre ameliorer 2 fois max
+    if(p.argent < PRICE_UPGRADE_SB || p.SB == MAX_INCREASE_SB)
         return 0;
     return 1;
 }
@@ -399,48 +327,95 @@ int canUpgradeCT(Player p){
     return 1;
 }
 
-/*
-*   FUNCTIONS GAME
-*/
 
-void freeGame(Game* game){
-    freeStations(game->stations);   
-    freePlayers(game->players);
-    free(game);
+
+/*
+*   FUNCTIONS BUS
+*/
+void freeBus(Bus* b){
+    freeLLPassengers(b->passengers);
+    free(b);
 }
 
-void getServerDataFirstTurn(Game* game){
-    scanf("%d %d", &game->nbPlayers, &monID);
-    Station s;
-    for(int i = 0 ; i < NOMBRE_STATIONS_DEBUT ; i++){
-        scanf("%d %d %d %d", &(s.ID), &(s.position.X), &(s.position.Y), &(s.capacite));
-        game->nbStation++;
-        addStation(game->stations,s,game->nbStation);
+void addBus(Bus* buss, Bus b, int nbBus){
+    buss[nbBus].ID = b.ID;
+    buss[nbBus].nbCar = b.nbCar;
+    buss[nbBus].IDStationDest = b.IDStationDest;
+    buss[nbBus].position.X = b.position.X;
+    buss[nbBus].position.Y = b.position.Y;
+    buss[nbBus].canChangeDestination = 1;
+}
+
+Bus* getBusByIdBus(Player* players, int idBus, int nbPlayers){
+    Player p;
+    for(int i = 0 ; i < nbPlayers ; i++){
+        p = players[i];
+        for(int j = 0 ; j < p.nbBus ; j++){
+            if( p.bus[j].ID == idBus)
+                return &(p.bus[j]);           
+        }
+    }
+    return NULL;
+}
+
+void updateDataBus(Bus* bToUp, Bus b){
+    bToUp->nbCar = b.nbCar;
+    bToUp->position.X = b.position.X;
+    bToUp->position.Y = b.position.Y;
+    bToUp->IDStationDest = b.IDStationDest;
+}
+
+int containBus(Bus* buss, int idBus, int nbBus){
+    for(int i = 0 ; i < nbBus ; i++){
+        if(buss[i].ID == idBus)
+            return 1;
+    }
+    return 0;
+}
+
+//Renvoie le bus qui possede le passenger dont l'id est envoyé en parametre
+Bus* getBusByIdP(Player* players, int idPassenger, int nbPlayers){
+
+    for(int i = 0 ; i < nbPlayers ; i++){
+        for(int j = 0 ; j < players[i].nbBus ; j++){
+            Bus* bus = &(players[i].bus[j]);
+            if( containPassenger(bus->passengers, idPassenger) == 1)
+                return bus;
+        }
+    }
+    return NULL;
+}
+//Renvoie le bus du joueur p dont l'id du bus correspond à idBus
+Bus* getBusOfPlayerByIDBus(Player p, int idBus){
+    for(int i = 0 ; i < p.nbBus ; i++){
+        if(p.bus[i].ID == idBus)
+            return &p.bus[i];
+    }
+    return NULL;
+}
+
+void getServerDataBus(Game* game){
+    Bus b;
+    int nbBus,idPlayer;
+    scanf("%d", &nbBus);
+
+    //ID J X Y A S: bus, idPlayer, position X Y, id Station, nbCar
+    for(int i = 0 ; i < nbBus ; i++){
+        scanf("%d %d %d %d %d %d", &b.ID, &idPlayer, &b.position.X, &b.position.Y, &b.IDStationDest, &b.nbCar);
+        Player* p = getPlayer(game->players, idPlayer, game->nbPlayers);
+
+        //Si le joueur ne contient pas le bus, l'ajoute
+        if( containBus(p->bus, b.ID, p->nbBus) == 0 ){
+            addBus(p->bus, b, p->nbBus);
+            p->nbBus++;
+        }
+        //Sinon on met a jour les donnees du bus
+        else{
+            Bus* bToUpdate = getBusOfPlayerByIDBus(*p,b.ID);
+            updateDataBus(bToUpdate,b);
+        }
     }
 }
-
-void getServerDataEveryTurn(Game* game){
-    getServerDataPlayer(game); //Recupere les scanf dans le fichier joueur.c
-    getServerDataStation(game); //Recupere les scanf dans le fichier station.c
-    getServerDataBus(game); //recupere les scanf dans le fichier bus.c
-    getServerDataPassenger(game); //recupere les scanf dans le fichier voyageur.c
-}
-
-Game* initGame(){
-    Game* game = (Game*)malloc(sizeof(Game));
-    game->stations = (Station*)malloc(sizeof(Station)*NOMBRE_MAX_STATIONS);
-    getServerDataFirstTurn(game);
-    initPlayer(game);
-    return game; 
-}
-
-int gameEnded(Game* game){
-    Player* p = getPlayer(game->players, monID, game->nbPlayers);
-    if(game->turn < MAX_TURN && p->victoire == 0)
-        return 0;
-    return 1;
-}
-
 /*
 *   FUNCTIONS PASSENGER
 */
@@ -470,7 +445,7 @@ Passenger* getPassenger(LLPassenger* passengers, int ID){
     }
     return NULL;
 }
-
+//Verifie si la LLPassenger contient le passenger dont l'id est envoyé en parametre
 int containPassenger(LLPassenger* l, int idPassenger){
     LLPassenger* tmp = l;
     while(tmp!=NULL){
@@ -481,19 +456,20 @@ int containPassenger(LLPassenger* l, int idPassenger){
     return 0;
 }
 
+//On obtient ici la liste des stations que les voyageurs souhaitent aller
 Station* getStationsOfPassengers(Station* stations, int nbStation, LLPassenger* l, int nbPassenger){
     Station* stationsPassengers = (Station*)malloc(sizeof(Station)*nbPassenger);
     LLPassenger* tmp = l;
     int i = 0;
     while(tmp!=NULL){
-        i++;
         Station* s = getStationByIDStation(stations,nbStation,tmp->p.IDS2);
         addStation(stationsPassengers,*s,i);
         tmp=tmp->next;
+        i++;
     }
     return stationsPassengers;
 }
-
+//Nombre d'element dans la LLPassenger
 int nbPassenger(LLPassenger* l){
     LLPassenger* tmp = l;
     int nb = 0;
@@ -504,6 +480,7 @@ int nbPassenger(LLPassenger* l){
     return nb;
 }
 
+//Nombre de voyageur qui veulent descendre du bus
 int nbPassengersGettingOffBus(int idStation, LLPassenger* l){
     LLPassenger* tmp = l;
     int nb = 0;
@@ -518,14 +495,15 @@ int nbPassengersGettingOffBus(int idStation, LLPassenger* l){
 //Supression du Passenger de la liste donnée en parametre. 
 //On indique dans l'entier liberer si on veut supprimer le Passenger du jeu  
 //ou juste l'enlever de la liste
-LLPassenger* deletePassenger(int idPassenger, LLPassenger* passengers, int liberer){
+//On retourne la nouvelle LLPassenger qui ne possède plus le Passenger 
+LLPassenger* deletePassenger(int idPassenger, LLPassenger* passengers, int freeP){
     LLPassenger* tmp = passengers;
     LLPassenger* prev; 
     // Si le Passenger a supprimé est en tete de liste 
     if (tmp != NULL && tmp->p.ID == idPassenger) 
     { 
         prev = tmp->next;   // Changed head 
-        if(liberer==1)
+        if(freeP==1)
             free(passengers);
         return prev;               // free old head 
     } 
@@ -538,14 +516,15 @@ LLPassenger* deletePassenger(int idPassenger, LLPassenger* passengers, int liber
         if (tmp == NULL) return NULL; 
         
         prev->next = tmp->next; 
-        if(liberer==1)
+        if(freeP==1)
             free(tmp);  // Free memory 
 
         return passengers;
     }
     
 }
-//On supprime le Passenger de la liste d'attente et on l'ajoute
+//On traite ici des voyageurs qui sont montés dans un bus
+//On supprime le Passenger de la liste d'attente sans le free et on l'ajoute
 //dans la liste de Passenger du bus du joueur concerné
 void processPassengersGettingOn(Game* game){
     int idt, idb;
@@ -559,7 +538,7 @@ void processPassengersGettingOn(Game* game){
     buss->passengers = createPassenger(buss->passengers,v2);
 }
 
-
+//On traite ici des voyageurs qui sont descendus d'un bus
 //On recherche le bus qui contient le Passenger qui descend.
 //On free le Passenger pour le faire disparaitre du jeu
 void processPassengersGettingOff(Game* game){
@@ -569,7 +548,8 @@ void processPassengersGettingOff(Game* game){
     if(buss!=NULL)
         buss->passengers=deletePassenger(idt,buss->passengers,1);
 }
-//Traitement des nouveaux passengers, on les ajoute dans la liste des passengers du station où ils
+//Traitement des nouveaux passengers,
+//on les ajoute dans la liste des passengers du station où ils
 //sont apparus
 void processNewPassengers(Game* game){
     Passenger p;
@@ -620,7 +600,6 @@ Player* getPlayer(Player* players, int ID, int nbPlayers){
     return NULL;
 }
 
-
 //Recupere les infos des players
 //5 entiers : ID joueur, son argent, nombre d'amélioration SB, SP et CT
 void getServerDataPlayer(Game* game){
@@ -670,6 +649,21 @@ Station* getStationByIdP(Station* stations, int nbStation, int idPassenger){
     return NULL;
 }
 
+int getIDStationWithMostPassenger(Station* stations, int nbStations){
+    int tmp = 0;
+    int id = 0;
+
+    for(int i = 0 ; i < nbStations ; i++){
+        int nbP = nbPassenger(stations[i].waitingPassengers);
+        if(nbP > tmp){
+            tmp = nbP;
+            id = stations[i].ID;
+        }
+    }
+    if(tmp == 0)
+        return -1;
+    return id;
+}
 
 //resultne la station qui est le moins loin du bus donné en parametre
 Station* getClosestStation(Position pBus, Station* stations, int nbStation){
@@ -699,39 +693,37 @@ Station* getStationsNotEmpty(Station* stations, int* nbStation){
     for(int i = 0 ; i < *nbStation ; i++){
         nb = nbPassenger(stations[i].waitingPassengers);
         if(nb != 0){
-            counter++;
             addStation(result,stations[i],counter);
+            counter++;
         }
     }
-    result = (Station*)realloc(result,counter);
     *nbStation = counter;
     return result;
 }
  
 //Ajoute une nouvelle station dans la liste
 void addStation(Station* stations, Station s, int nbStation){
-    stations[nbStation-1].ID = s.ID;
-    stations[nbStation-1].position.X = s.position.X;
-    stations[nbStation-1].position.Y = s.position.Y;
-    stations[nbStation-1].capacite = s.capacite;
+    stations[nbStation].ID = s.ID;
+    stations[nbStation].position.X = s.position.X;
+    stations[nbStation].position.Y = s.position.Y;
+    stations[nbStation].capacity = s.capacity;
 }
-//1 entier: info si nouvelle station ( 1 oui, 0 non)
+//1 entier: info si nouvelle station (1 oui, 0 non)
 //4 entiers: ID, X, Y , capacite d'une NOUVELLE station
 void getServerDataStation(Game* game){
-    int nouvelleStation;
+    int newStation;
 
     //Indique s'il y a une nouvelle station
-    scanf("%d", &nouvelleStation);
+    scanf("%d", &newStation);
     Station s; 
     
     //Si nouvelle station, alors l'ajouter dans la liste, sinon ne fais rien
-    if(nouvelleStation == 1){    
-        scanf("%d %d %d %d", &s.ID, &(s.position.X), &(s.position.Y), &s.capacite);
-        game->nbStation++;
+    if(newStation == 1){    
+        scanf("%d %d %d %d", &s.ID, &(s.position.X), &(s.position.Y), &s.capacity);
         addStation(game->stations, s, game->nbStation);
+        game->nbStation++;
     }
 }
-
 /*
 *   FUNCTION STRATEGY
 */
@@ -743,7 +735,7 @@ void freeStrategy(Strategy* s){
 
 Strategy* initStructStrategy(Game* game){
     Strategy* strat = (Strategy*)malloc(sizeof(Strategy));
-    Player* me = getPlayer(game->players,monID,game->nbPlayers);
+    Player* me = getPlayer(game->players,myID,game->nbPlayers);
     char** commands = initCommands();    
 
     strat->me = me;
@@ -752,45 +744,84 @@ Strategy* initStructStrategy(Game* game){
 
     return strat;
 }
-   
-void firstTurn(Strategy* s){
-    addCommand(s,command_addBus(0));
+
+//Calcul qui nous permet de déterminer le nombre de tour qui reste pour remplir le bus
+int ceiling(int n){
+    return (n + MAX_PASSENGER_GETTING_OFF_BUS - 1) / MAX_PASSENGER_GETTING_OFF_BUS;
 }
 
-void updateBusCanMove(Strategy* strat){
+//Verifie si le bus peut de nouveau changer de direction
+int busCanChangeDestination(Bus b, Station s){
+    //Si le bus est arrive à la station demande précédemment
+    if(samePosition(b.position,s.position)==1){
+        //Si plus aucun voyageur ne souhaite descendre
+        if( nbPassengersGettingOffBus(s.ID,b.passengers) == 0){
+            int nbPassengerInBus = nbPassenger(b.passengers);
+            
+            //BUS PLEIN
+            if(nbPassengerInBus == b.nbCar*NB_MAX_PASSENGER_IN_BUS)
+                return 1;
+
+            int nbPassengerInStation = nbPassenger(s.waitingPassengers);
+            int nbTurnToFill;
+            int nbPassengerToFill = (b.nbCar*NB_MAX_PASSENGER_IN_BUS) - nbPassengerInBus;
+
+            //On calcul le nombre de tours necessaire pour remplir le bus
+            if(nbPassengerInStation<nbPassengerToFill)
+                nbTurnToFill = ceiling(nbPassengerInStation);
+            else
+                nbTurnToFill = ceiling(nbPassengerToFill);
+
+            if(nbTurnToFill == 0)
+                return 1;
+        }
+    }
+    return 0;
+}
+
+
+void updateBusCanChangeDestination(Strategy* strat){
 
     Bus* myBuses = strat->me->bus;
     int nbStation = strat->game->nbStation;
     
     for(int i = 0; i < strat->me->nbBus ; i++){
         Station* s = getStationByIDStation(strat->game->stations,nbStation,myBuses[i].IDStationDest);
-        if(busCanMove(myBuses[i],*s) == 1 )
-            myBuses[i].canMove = 1;
+        if(busCanChangeDestination(myBuses[i],*s) == 1 )
+            myBuses[i].canChangeDestination = 1;
     }
 }
 
-
-void moveBuses(Strategy* strat){
+//Pour chacun de mes bus, si le bus peut changer de destination
+//On regarde si le nombre de voyageurs dans le bus est vide.
+//Si le bus n'est pas vide, on recupere la station non vide la plus proche
+//Sinon on recupere la station la plus proche d'un voyageur du bus
+//A la fin on ajoute la commande qui permet d'aller à la station voulue 
+void changeDestinationBuses(Strategy* strat){
     Station* s;
     Bus* myBuses = strat->me->bus;
     Station* stations = NULL;
     int nbStations = 0;
 
     for(int i = 0 ; i < strat->me->nbBus ; i++){
-        if(myBuses[i].canMove == 1){
+        //Si le bus peut changer de destination
+        if(myBuses[i].canChangeDestination == 1){
             int nbP = nbPassenger(myBuses[i].passengers);
+            //Si le bus n'est pas vide
             if(nbP != 0){
                 stations = getStationsOfPassengers(strat->game->stations, 
                                         strat->game->nbStation, myBuses[i].passengers, nbP);
                 nbStations = nbP;
             }
+        
             else{
                 nbStations = strat->game->nbStation;
                 stations = getStationsNotEmpty(strat->game->stations, &nbStations);
             }
+            //Check dans le cas s'il y a pas de voyageur dans le bus et que toutes les stations sont vides 
             if(nbStations != 0){
                 s=getClosestStation(myBuses[i].position, stations, nbStations);
-                myBuses[i].canMove = 0;
+                myBuses[i].canChangeDestination = 0;
                 addCommand(strat,command_directBus(myBuses[i].ID,s->ID));
             }
         }
@@ -799,46 +830,96 @@ void moveBuses(Strategy* strat){
     free(stations);
 }
 
+//On achete des que possible les ameliorations dans cet ordre:
+//Achat des bus jusqu'à en avoir le max
+//Une fois les 4 bus obtenu, on achete au max l'amelioration SP
+//Une fois le max amelioration de SP, on achete au max l'amelioration CT
 void buyImprovements(Strategy* s){
 
-    if(canAddBus(*(s->me)) == 1) //Des qu'on peut on achete jusqu'a posséder 4 bus{}
-        addCommand(s,command_addBus(0));
+    if(canAddBus(*(s->me)) == 1){
+        int idStation = getIDStationWithMostPassenger(s->game->stations, s->game->nbStation);
+        if(idStation != -1) //Verification au cas où toutes les stations sont vides
+            addCommand(s,command_addBus(idStation));
+    }
    
-    if(s->me->nbBus == MAX_NB_BUS && canUpgradeSP(*(s->me)) == 1) //Des qu'on a 4 bus, on ameliore la vitesse
+    if(s->me->nbBus == MAX_NB_BUS && canUpgradeSP(*(s->me)) == 1)
         addCommand(s,command_upgradeSP());
 
     if(s->me->SP == MAX_INCREASE_SP && canUpgradeCT(*(s->me)) == 1)
-       addCommand(s,command_upgradeCT());
+        addCommand(s,command_upgradeCT());
 }
 
-void everyTurn(Strategy* s){
-    
+void everyTurnStrategy(Strategy* s){
     buyImprovements(s);
-    updateBusCanMove(s); //Check si les bus sont arrives a destination ou non puis met a jour les variables
-    moveBuses(s);
+    if(s->me->nbBus != 0){
+        updateBusCanChangeDestination(s);
+        changeDestinationBuses(s);
+    }
     addCommand(s,command_pass());
 }
 
-void startStrategy(Game* game){
-
+void play(Game* game){
     Strategy* strat = initStructStrategy(game);
-
-    if(game->turn == 0)
-        firstTurn(strat);
-    else
-        everyTurn(strat);
-
+    everyTurnStrategy(strat);
     sendCommands(strat->commands,strat->nbCommand);
     freeStrategy(strat);
+}
+
+
+/*
+*   FUNCTIONS GAME
+*/
+
+void freeGame(Game* game){
+    freeStations(game->stations);   
+    freePlayers(game->players);
+    free(game);
+}
+
+//Recupere les infos du premier tour de jeu 
+void getServerDataFirstTurn(Game* game){
+    scanf("%d %d", &game->nbPlayers, &myID);
+    Station s;
+    for(int i = 0 ; i < NB_STATIONS_START ; i++){
+        scanf("%d %d %d %d", &(s.ID), &(s.position.X), &(s.position.Y), &(s.capacity));
+        addStation(game->stations,s,game->nbStation);
+        game->nbStation++;
+    }
+}
+
+//recupere les infos à chaque tour (premier tour exclu)
+void getServerDataEveryTurn(Game* game){
+    getServerDataPlayer(game);
+    getServerDataStation(game);
+    getServerDataBus(game);
+    getServerDataPassenger(game);
+}
+
+//Initialisation du jeu
+Game* initGame(){
+    Game* game = (Game*)malloc(sizeof(Game));
+    game->stations = (Station*)malloc(sizeof(Station)*MAX_STATIONS);
+    getServerDataFirstTurn(game);
+    initPlayer(game);
+    return game; 
+}
+
+//Verifie si le jeu est terminé
+//Donc si le tour a atteint le 
+int gameEnded(Game* game){
+    Player* p = getPlayer(game->players, myID, game->nbPlayers);
+    if(game->turn < MAX_TURN && p->victoire == 0)
+        return 0;
+    return 1;
 }
 
 // LAUNCH GAME
 
 int main(){
-    Game* game = initGame();
+    Game* game = initGame(); // First turn completed
     do{
         getServerDataEveryTurn(game);
-        startStrategy(game);
+        play(game);
         fflush(stdout);
         game->turn++;
     }while(gameEnded(game) == 0);

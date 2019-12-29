@@ -18,8 +18,7 @@ typedef struct Strategy{
 void freeStrategy(Strategy* s);
 Strategy* initStructStrategy(Game* game);
 void startStrategy(Game* game);
-void firstTurn(Strategy* s);
-void everyTurn(Strategy* s);
+void everyTurnStrategy(Strategy* s);
 void updateBusCanMove(Strategy* strat);
 void moveBuses(Strategy* strat);
 void buyImprovements(Strategy* s);
