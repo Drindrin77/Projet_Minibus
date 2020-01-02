@@ -38,7 +38,7 @@ Comment fonctionne mon IA :
     -Je n'ai pas exploité la probabilité d'apparition ni autre informations. L'IA est en soit assez simple.
     
     J'ai réalisé la structure du jeu suivante:
-    -Game possède tous les données du jeu, ainsi il sera très souvent passer en parametre
+    -Game possède toutes les données du jeu, ainsi il sera très souvent passer en parametre
     -Strategy me permet de simplifier la mise en place de la strategie, elle possede la liste des commandes et j'ai
      décidé de créer un raccourci en ajoutant dans la structure Player me qui posséde tous mes données de joueur
     -Player : Chaque joueur possède ses propres infos (id,argent, nombre d'amelioration, victoire etc...) et chaque joueur
@@ -765,6 +765,7 @@ int busCanChangeDestination(Bus b, Station s){
 
             int nbPassengerInStation = nbPassenger(s.waitingPassengers);
             int nbTurnToFill;
+            //Nombre de place restante dans le bus
             int nbPassengerToFill = (b.nbCar*NB_MAX_PASSENGER_IN_BUS) - nbPassengerInBus;
 
             //On calcul le nombre de tours necessaire pour remplir le bus
@@ -780,7 +781,7 @@ int busCanChangeDestination(Bus b, Station s){
     return 0;
 }
 
-
+//Pour chaque bus, on met à jour la variable canChangeDestination.
 void updateBusCanChangeDestination(Strategy* strat){
 
     Bus* myBuses = strat->me->bus;
